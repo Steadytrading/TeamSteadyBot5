@@ -377,15 +377,21 @@ def on_text(update: Update, context: CallbackContext):
         )
         return
 
-    if t == "funded":
-        tag_lead(chat_id, "funded")
-        update.message.reply_text(
-            "✅ Step 4 — Activate Copy Trading\n\n"
-            f"👉 {COPY_LINK}\n\n"
-            'Press "Copy". When ready, you get access to our info channel:'
-        )
-        update.message.reply_text(CHANNEL_LINK, disable_web_page_preview=True)
-        return
+if t == "funded":
+    tag_lead(chat_id, "funded")
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🚀 Open Copy Trading", url=COPY_LINK)],
+        [InlineKeyboardButton("📣 Info Channel", url=CHANNEL_LINK)],
+    ])
+    update.message.reply_text(
+        "✅ Step 4 — Activate Copy Trading\n\n"
+        "Tap the button below to open Copy Trading.\n\n"
+        f"{DISCLAIMER}",
+        reply_markup=kb,
+        disable_web_page_preview=True
+    )
+    return
+
 
     if t in {"/start", "start"}:
         start(update, context)
