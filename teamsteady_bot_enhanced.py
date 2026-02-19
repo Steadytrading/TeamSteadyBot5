@@ -93,12 +93,6 @@ def save_leads(data):
     with open(LEADS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-def remove_followups(job_queue, chat_id: int):
-    prefixes = (f"fu30_{chat_id}", f"fu24_{chat_id}", f"fu72_{chat_id}")
-    for name in prefixes:
-        for job in job_queue.get_jobs_by_name(name):
-            job.schedule_removal()
-
 
 
 # lead structure:
