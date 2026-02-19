@@ -198,8 +198,8 @@ def main():
     
 print("=== STARTING TELEGRAM POLLING NOW ===", flush=True)
 
-    updater.start_polling()
-    updater.idle()
+updater.start_polling()
+updater.idle()
 
 if __name__ == "__main__":
     main()
