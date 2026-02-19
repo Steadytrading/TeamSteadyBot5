@@ -3,6 +3,7 @@
 import os
 import logging
 import psycopg2
+print("=== TEAMSTEADY BOT STARTED (v8 postgres) ===", flush=True)
 from urllib.parse import urlparse
 from datetime import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -194,6 +195,8 @@ def main():
     dp.add_handler(CommandHandler("stats", stats))
     dp.add_handler(CallbackQueryHandler(choose_strategy, pattern="^st50$|^st500$"))
     dp.add_handler(CallbackQueryHandler(copied, pattern="^copied$"))
+    
+print("=== STARTING TELEGRAM POLLING NOW ===", flush=True)
 
     updater.start_polling()
     updater.idle()
