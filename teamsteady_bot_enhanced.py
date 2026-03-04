@@ -25,8 +25,8 @@ BRAND_NAME = os.getenv("BRAND_NAME", "MCM Trading")
 # Links used in onboarding (override in Railway Variables if needed)
 VANTAGE_OPEN_ACCOUNT_LINK = os.getenv("VANTAGE_OPEN_ACCOUNT_LINK", "https://www.vantagemarkets.com/open-live-account/")
 COPY_TRADING_LINK = os.getenv("COPY_TRADING_LINK", "https://vantageapp.onelink.me/qaPD?af_xp=custom&pid=CopyTrading_Offer&af_web_dp=https%3A%2F%2Fsecure.vantagemarkets.com%2FcopyTrading%2Fdiscover%2FdiscoverDetail&deep_link_value=DQUK56OSJIIAA===")
-CHANNEL_LINK = os.getenv("CHANNEL_LINK", "")  # optional
-SUPPORT_LINK = os.getenv("SUPPORT_LINK", "")  # optional
+CHANNEL_LINK = os.getenv("CHANNEL_LINK", "")   # optional (Telegram channel)
+SUPPORT_LINK = os.getenv("SUPPORT_LINK", "")   # optional (support chat/channel)
 
 # =========================
 # DB helpers
@@ -85,118 +85,63 @@ def insert_lead(update: Update, start_param: str = "", last_step: str = ""):
 
 
 # =========================
-# UI helpers
+# Callbacks
 # =========================
 CB_STEP1 = "step1"
 CB_STEP2 = "step2"
 CB_STEP3 = "step3"
 CB_STEP4 = "step4"
+CB_RISK = "risk"
+CB_FAQ = "faq"
 CB_BACK = "back"
 
 
+# =========================
+# Keyboards
+# =========================
 def kb_main():
     rows = [
         [InlineKeyboardButton("Step 1 — Open Vantage account", callback_data=CB_STEP1)],
-        [InlineKeyboardButton("Step 2 — Telegram updates", callback_data=CB_STEP2)],
-        [InlineKeyboardButton("Step 3 — Risk setup (recommended)", callback_data=CB_STEP3)],
-        [InlineKeyboardButton("Step 4 — Copy the strategy", callback_data=CB_STEP4)],
+        [InlineKeyboardButton("Step 2 — Deposit funds", callback_data=CB_STEP2)],
+        [InlineKeyboardButton("Step 3 — Open copy page", callback_data=CB_STEP3)],
+        [InlineKeyboardButton("Step 4 — Telegram updates", callback_data=CB_STEP4)],
+        [
+            InlineKeyboardButton("⚠️ Risk & Rules", callback_data=CB_RISK),
+            InlineKeyboardButton("❓ FAQ", callback_data=CB_FAQ),
+        ],
     ]
-    if CHANNEL_LINK:
-        rows.append([InlineKeyboardButton("📣 Join Telegram channel", url=CHANNEL_LINK)])
     if SUPPORT_LINK:
         rows.append([InlineKeyboardButton("Support", url=SUPPORT_LINK)])
     return InlineKeyboardMarkup(rows)
 
 
+def kb_back(next_cb: str = ""):
+    row = []
+    if next_cb:
+        row.append(InlineKeyboardButton("Next ➜", callback_data=next_cb))
+    row.append(InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK))
+    return InlineKeyboardMarkup([row])
+
+
+# =========================
+# Commands
+# =========================
 def start(update: Update, context: CallbackContext):
     start_param = context.args[0] if context.args else ""
     insert_lead(update, start_param=start_param, last_step="start")
 
     msg = (
         f"👋 Welcome to *{BRAND_NAME}*\n\n"
-        "This bot will guide you to copy our Gold (XAUUSD) strategy on Vantage.\n"
-        "Follow the steps below — it takes just a couple of minutes.\n\n"
-        "*Important:* Trading involves risk. You can lose money. Past performance is not indicative of future results."
+        "Use the buttons below to onboard.\n\n"
+        "✅ If nothing happens when you type *start*, make sure you type */start* (with a slash) "
+        "or press Telegram’s *Start* button.\n\n"
+        "*Important:* Trading involves risk. You can lose money."
     )
     update.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb_main())
 
 
-def on_back(update: Update, context: CallbackContext):
-    q = update.callback_query
-    q.answer()
-    q.edit_message_reply_markup(reply_markup=kb_main())
-
-
-def on_steps(update: Update, context: CallbackContext):
-    q = update.callback_query
-    q.answer()
-    data = q.data
-
-    if data == CB_STEP1:
-        insert_lead(update, last_step="step1")
-        text = (
-            "*Step 1 — Open your Vantage account*\n\n"
-            "Create a live account with Vantage (or log in if you already have one).\n"
-            "Then come back here for the next step."
-        )
-        kb = InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ Open Vantage Account", url=VANTAGE_OPEN_ACCOUNT_LINK)],
-            [InlineKeyboardButton("Next ➜ Step 2", callback_data=CB_STEP2)],
-            [InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK)],
-        ])
-        q.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
-        return
-
-    if data == CB_STEP2:
-        insert_lead(update, last_step="step2")
-        text = (
-            "*Step 2 — Telegram updates*\n\n"
-            "We share structured updates and notes in Telegram.\n"
-            "Join the channel (optional) and continue."
-        )
-        rows = []
-        if CHANNEL_LINK:
-            rows.append([InlineKeyboardButton("📣 Join Telegram channel", url=CHANNEL_LINK)])
-        rows += [
-            [InlineKeyboardButton("Next ➜ Step 3", callback_data=CB_STEP3)],
-            [InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK)],
-        ]
-        q.edit_message_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
-        return
-
-    if data == CB_STEP3:
-        insert_lead(update, last_step="step3")
-        text = (
-            "*Step 3 — Recommended risk setup*\n\n"
-            "To keep risk low, we recommend starting with:\n"
-            "• *Example account:* $1000\n"
-            "• *Position size:* 0.01 lots\n\n"
-            "You stay in control and can stop copying anytime."
-        )
-        kb = InlineKeyboardMarkup([
-            [InlineKeyboardButton("Next ➜ Step 4", callback_data=CB_STEP4)],
-            [InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK)],
-        ])
-        q.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
-        return
-
-    if data == CB_STEP4:
-        insert_lead(update, last_step="step4")
-        text = (
-            "*Step 4 — Copy the strategy*\n\n"
-            "Open the copy trading page and press *Copy strategy*.\n"
-            "Trades will then copy automatically based on your settings."
-        )
-        kb = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🚀 Open Copy Trading Page", url=COPY_TRADING_LINK)],
-            [InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK)],
-        ])
-        q.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
-        return
-
-
 def help_cmd(update: Update, context: CallbackContext):
-    update.message.reply_text("Use /start to begin the onboarding.")
+    update.message.reply_text("Use /start to open the onboarding menu.")
 
 
 def stats(update: Update, context: CallbackContext):
@@ -227,6 +172,117 @@ def stats(update: Update, context: CallbackContext):
     update.message.reply_text("\n".join(lines), parse_mode="Markdown")
 
 
+# =========================
+# Callbacks
+# =========================
+def on_back(update: Update, context: CallbackContext):
+    q = update.callback_query
+    q.answer()
+    q.edit_message_text(
+        f"Menu — *{BRAND_NAME}*\nChoose a step:",
+        parse_mode="Markdown",
+        reply_markup=kb_main(),
+    )
+
+
+def on_steps(update: Update, context: CallbackContext):
+    q = update.callback_query
+    q.answer()
+    data = q.data
+
+    if data == CB_STEP1:
+        insert_lead(update, last_step="step1")
+        text = (
+            "*Step 1 — Open your Vantage account*\n\n"
+            "Create a live account with Vantage (or log in if you already have one).\n"
+            "When you’re done, come back here."
+        )
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton("✅ Open Vantage Account", url=VANTAGE_OPEN_ACCOUNT_LINK)],
+            [InlineKeyboardButton("Next ➜ Step 2", callback_data=CB_STEP2)],
+            [InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK)],
+        ])
+        q.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
+        return
+
+    if data == CB_STEP2:
+        insert_lead(update, last_step="step2")
+        text = (
+            "*Step 2 — Deposit funds*\n\n"
+            "Fund your Vantage account.\n\n"
+            "Recommended starting example:\n"
+            "• *$1000 account*\n"
+            "• *0.01 lots* sizing\n\n"
+            "After depositing, continue to the copy page."
+        )
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton("I’ve deposited ➜ Step 3", callback_data=CB_STEP3)],
+            [InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK)],
+        ])
+        q.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
+        return
+
+    if data == CB_STEP3:
+        insert_lead(update, last_step="step3")
+        text = (
+            "*Step 3 — Open the copy page*\n\n"
+            "Open the copy trading page and press *Copy strategy*.\n"
+            "Trades will copy automatically based on your settings."
+        )
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🚀 Open Copy Trading Page", url=COPY_TRADING_LINK)],
+            [InlineKeyboardButton("Next ➜ Step 4", callback_data=CB_STEP4)],
+            [InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK)],
+        ])
+        q.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
+        return
+
+    if data == CB_STEP4:
+        insert_lead(update, last_step="step4")
+        text = (
+            "*Step 4 — Telegram updates*\n\n"
+            "Join Telegram for updates, trade notes, and important announcements."
+        )
+        rows = []
+        if CHANNEL_LINK:
+            rows.append([InlineKeyboardButton("📣 Open Telegram channel", url=CHANNEL_LINK)])
+        rows += [
+            [InlineKeyboardButton("✅ Done", callback_data=CB_BACK)],
+            [InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK)],
+        ]
+        q.edit_message_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
+        return
+
+    if data == CB_RISK:
+        insert_lead(update, last_step="risk")
+        text = (
+            "*Risk & Rules*\n\n"
+            "• Trading is risky — you can lose some or all of your capital.\n"
+            "• Past performance is not indicative of future results.\n"
+            "• You remain responsible for your account and can stop copying anytime.\n"
+            "• Only trade with money you can afford to lose.\n\n"
+            "By continuing, you acknowledge these risks."
+        )
+        q.edit_message_text(text, parse_mode="Markdown", reply_markup=kb_back())
+        return
+
+    if data == CB_FAQ:
+        insert_lead(update, last_step="faq")
+        text = (
+            "*FAQ*\n\n"
+            "*Do I need trading experience?*\n"
+            "No. Copying is automatic, but you should understand the risks.\n\n"
+            "*Do you have access to my funds?*\n"
+            "No. Your funds remain in your own Vantage account.\n\n"
+            "*Can I stop copying?*\n"
+            "Yes — you can stop at any time in your copy settings.\n\n"
+            "*Why Telegram?*\n"
+            "For updates, notes, and announcements."
+        )
+        q.edit_message_text(text, parse_mode="Markdown", reply_markup=kb_back())
+        return
+
+
 def main():
     if not TELEGRAM_BOT_TOKEN:
         raise RuntimeError("Missing TELEGRAM_BOT_TOKEN")
@@ -241,7 +297,7 @@ def main():
     dp.add_handler(CommandHandler("stats", stats))
 
     dp.add_handler(CallbackQueryHandler(on_back, pattern=f"^{CB_BACK}$"))
-    dp.add_handler(CallbackQueryHandler(on_steps, pattern="^(step1|step2|step3|step4)$"))
+    dp.add_handler(CallbackQueryHandler(on_steps, pattern="^(step1|step2|step3|step4|risk|faq)$"))
 
     updater.start_polling()
     updater.idle()
