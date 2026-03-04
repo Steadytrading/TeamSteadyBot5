@@ -123,6 +123,11 @@ def start(update: Update, context: CallbackContext):
 
     msg = (
         f"👋 Welcome to *{BRAND_NAME}*\n\n"
+        "Community update:\n\n"
+
+        "Active members: 137.\n\n"
+        "Market focus: Gold (XAUUSD).\n\n"
+        "Setup time: 3–5 minutes.\n\n"
         "Use the buttons below to onboard.\n\n"
         "*Important:* Trading involves risk. You can lose money."
     )
