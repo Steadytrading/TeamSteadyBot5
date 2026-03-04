@@ -5,7 +5,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext, MessageHandler, Filters
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -95,15 +95,14 @@ CB_RISK = "risk"
 CB_FAQ = "faq"
 CB_BACK = "back"
 
-
 # =========================
 # Keyboards
 # =========================
 def kb_main():
     rows = [
         [InlineKeyboardButton("Step 1 — Open Vantage account", callback_data=CB_STEP1)],
-        [InlineKeyboardButton("Step 2 — Deposit funds", callback_data=CB_STEP2)],
-        [InlineKeyboardButton("Step 3 — Open copy page", callback_data=CB_STEP3)],
+        [InlineKeyboardButton("Step 2 — Fund your account", callback_data=CB_STEP2)],
+        [InlineKeyboardButton("Step 3 — Open copy trading page", callback_data=CB_STEP3)],
         [InlineKeyboardButton("Step 4 — Telegram updates", callback_data=CB_STEP4)],
         [
             InlineKeyboardButton("⚠️ Risk & Rules", callback_data=CB_RISK),
@@ -113,14 +112,6 @@ def kb_main():
     if SUPPORT_LINK:
         rows.append([InlineKeyboardButton("Support", url=SUPPORT_LINK)])
     return InlineKeyboardMarkup(rows)
-
-
-def kb_back(next_cb: str = ""):
-    row = []
-    if next_cb:
-        row.append(InlineKeyboardButton("Next ➜", callback_data=next_cb))
-    row.append(InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK))
-    return InlineKeyboardMarkup([row])
 
 
 # =========================
@@ -133,8 +124,6 @@ def start(update: Update, context: CallbackContext):
     msg = (
         f"👋 Welcome to *{BRAND_NAME}*\n\n"
         "Use the buttons below to onboard.\n\n"
-        "✅ If nothing happens when you type *start*, make sure you type */start* (with a slash) "
-        "or press Telegram’s *Start* button.\n\n"
         "*Important:* Trading involves risk. You can lose money."
     )
     update.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb_main())
@@ -172,6 +161,13 @@ def stats(update: Update, context: CallbackContext):
     update.message.reply_text("\n".join(lines), parse_mode="Markdown")
 
 
+# Optional: reply if user types "start" without slash
+def on_text(update: Update, context: CallbackContext):
+    txt = (update.message.text or "").strip().lower()
+    if txt == "start":
+        start(update, context)
+
+
 # =========================
 # Callbacks
 # =========================
@@ -194,8 +190,9 @@ def on_steps(update: Update, context: CallbackContext):
         insert_lead(update, last_step="step1")
         text = (
             "*Step 1 — Open your Vantage account*\n\n"
-            "Create a live account with Vantage (or log in if you already have one).\n"
-            "When you’re done, come back here."
+            "To access the copy trading strategy, you first need an active trading account with Vantage.\n\n"
+            "If you do not already have one, open a live account using the button below.\n\n"
+            "Once your account is created, return here and continue to Step 2."
         )
         kb = InlineKeyboardMarkup([
             [InlineKeyboardButton("✅ Open Vantage Account", url=VANTAGE_OPEN_ACCOUNT_LINK)],
@@ -208,15 +205,14 @@ def on_steps(update: Update, context: CallbackContext):
     if data == CB_STEP2:
         insert_lead(update, last_step="step2")
         text = (
-            "*Step 2 — Deposit funds*\n\n"
-            "Fund your Vantage account.\n\n"
-            "Recommended starting example:\n"
-            "• *$1000 account*\n"
-            "• *0.01 lots* sizing\n\n"
-            "After depositing, continue to the copy page."
+            "*Step 2 — Fund your account*\n\n"
+            "To begin copying the strategy, your Vantage account needs to be funded.\n\n"
+            "You are free to deposit any amount that suits your risk tolerance and financial situation.\n\n"
+            "Many participants choose to start with *around $500*, but this is only an example and not a requirement.\n\n"
+            "Once your account is funded, proceed to Step 3 to open the copy trading page."
         )
         kb = InlineKeyboardMarkup([
-            [InlineKeyboardButton("I’ve deposited ➜ Step 3", callback_data=CB_STEP3)],
+            [InlineKeyboardButton("I’ve funded my account ➜ Step 3", callback_data=CB_STEP3)],
             [InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK)],
         ])
         q.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
@@ -225,9 +221,10 @@ def on_steps(update: Update, context: CallbackContext):
     if data == CB_STEP3:
         insert_lead(update, last_step="step3")
         text = (
-            "*Step 3 — Open the copy page*\n\n"
-            "Open the copy trading page and press *Copy strategy*.\n"
-            "Trades will copy automatically based on your settings."
+            "*Step 3 — Open the copy trading page*\n\n"
+            "Open the copy trading page using the button below.\n\n"
+            "Locate the strategy and press *Copy Strategy*.\n\n"
+            "Once connected, trades will automatically be mirrored in your account based on your copy settings."
         )
         kb = InlineKeyboardMarkup([
             [InlineKeyboardButton("🚀 Open Copy Trading Page", url=COPY_TRADING_LINK)],
@@ -241,15 +238,13 @@ def on_steps(update: Update, context: CallbackContext):
         insert_lead(update, last_step="step4")
         text = (
             "*Step 4 — Telegram updates*\n\n"
-            "Join Telegram for updates, trade notes, and important announcements."
+            "Join our Telegram channel to receive strategy updates, trade notes, and important announcements.\n\n"
+            "This is where we share performance updates, market commentary, and operational messages related to the strategy."
         )
         rows = []
         if CHANNEL_LINK:
             rows.append([InlineKeyboardButton("📣 Open Telegram channel", url=CHANNEL_LINK)])
-        rows += [
-            [InlineKeyboardButton("✅ Done", callback_data=CB_BACK)],
-            [InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK)],
-        ]
+        rows += [[InlineKeyboardButton("✅ Back to menu", callback_data=CB_BACK)]]
         q.edit_message_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
         return
 
@@ -263,7 +258,11 @@ def on_steps(update: Update, context: CallbackContext):
             "• Only trade with money you can afford to lose.\n\n"
             "By continuing, you acknowledge these risks."
         )
-        q.edit_message_text(text, parse_mode="Markdown", reply_markup=kb_back())
+        q.edit_message_text(
+            text,
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK)]]),
+        )
         return
 
     if data == CB_FAQ:
@@ -279,7 +278,11 @@ def on_steps(update: Update, context: CallbackContext):
             "*Why Telegram?*\n"
             "For updates, notes, and announcements."
         )
-        q.edit_message_text(text, parse_mode="Markdown", reply_markup=kb_back())
+        q.edit_message_text(
+            text,
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK)]]),
+        )
         return
 
 
@@ -296,6 +299,9 @@ def main():
     dp.add_handler(CommandHandler("help", help_cmd))
     dp.add_handler(CommandHandler("stats", stats))
 
+    # Optional: handle user typing "start" without slash
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, on_text))
+
     dp.add_handler(CallbackQueryHandler(on_back, pattern=f"^{CB_BACK}$"))
     dp.add_handler(CallbackQueryHandler(on_steps, pattern="^(step1|step2|step3|step4|risk|faq)$"))
 
@@ -305,3 +311,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
