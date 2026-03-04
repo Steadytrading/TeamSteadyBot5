@@ -102,7 +102,7 @@ def kb_main():
     rows = [
         [InlineKeyboardButton("Step 1 — Open Vantage account", callback_data=CB_STEP1)],
         [InlineKeyboardButton("Step 2 — Fund your account", callback_data=CB_STEP2)],
-        [InlineKeyboardButton("Step 3 — Open copy trading page", callback_data=CB_STEP3)],
+        [InlineKeyboardButton("Step 3 — Strategy access", callback_data=CB_STEP3)],
         [InlineKeyboardButton("Step 4 — Telegram updates", callback_data=CB_STEP4)],
         [
             InlineKeyboardButton("⚠️ Risk & Rules", callback_data=CB_RISK),
@@ -123,9 +123,6 @@ def start(update: Update, context: CallbackContext):
 
     msg = (
         f"👋 Welcome to *{BRAND_NAME}*\n\n"
-        "Market: Gold (XAUUSD).\n\n"
-        "Strategy: Automated copy trading.\n\n"
-        "Setup time: 3 minutes.\n\n"
         "Use the buttons below to onboard.\n\n"
         "*Important:* Trading involves risk. You can lose money."
     )
@@ -212,7 +209,7 @@ def on_steps(update: Update, context: CallbackContext):
             "To begin copying the strategy, your Vantage account needs to be funded.\n\n"
             "You are free to deposit any amount that suits your risk tolerance and financial situation.\n\n"
             "Many participants choose to start with *around $500*, but this is only an example and not a requirement.\n\n"
-            "Once your account is funded, proceed to Step 3 to open the copy trading page."
+            "Once your account is funded, proceed to Step 3."
         )
         kb = InlineKeyboardMarkup([
             [InlineKeyboardButton("I’ve funded my account ➜ Step 3", callback_data=CB_STEP3)],
@@ -224,13 +221,14 @@ def on_steps(update: Update, context: CallbackContext):
     if data == CB_STEP3:
         insert_lead(update, last_step="step3")
         text = (
-            "*Step 3 — Open the copy trading page*\n\n"
-            "Open the copy trading page using the button below.\n\n"
-            "Locate the strategy and press *Copy Strategy*.\n\n"
-            "Once connected, trades will automatically be mirrored in your account based on your copy settings."
+            "*Step 3 — Strategy access*\n\n"
+            "You can preview the strategy on Vantage before deciding to copy.\n\n"
+            "Trades will only copy after you activate the strategy.\n\n"
+            "You remain in full control of your account."
         )
         kb = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🚀 Open Copy Trading Page", url=COPY_TRADING_LINK)],
+            [InlineKeyboardButton("👀 Preview strategy", url=COPY_TRADING_LINK)],
+            [InlineKeyboardButton("✅ Copy strategy", url=COPY_TRADING_LINK)],
             [InlineKeyboardButton("Next ➜ Step 4", callback_data=CB_STEP4)],
             [InlineKeyboardButton("⬅️ Back", callback_data=CB_BACK)],
         ])
