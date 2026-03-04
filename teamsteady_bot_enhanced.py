@@ -5,7 +5,7 @@ MCM Trading – Telegram Bot (EN) – Postgres v9 (stable)
 - Postgres via DATABASE_URL (Railway)
 - Team voice (we-form)
 - Single master strategy (Gold / XAUUSD)
-- st50 / st500 deep-links are kept for tracking only
+- st50 / st500 deep-links are kept for tracking only (single strategy)
 - Funnel steps: Done -> Verified -> Funded -> Copied button
 - FAQ includes Vantage Copy Trading FAQ link
 - Follow-ups (30m, 24h, 72h) via JobQueue (no duplicates)
@@ -255,17 +255,6 @@ def main_menu() -> InlineKeyboardMarkup:
     )
 
 
-def account_size_prompt() -> InlineKeyboardMarkup:
-    # Optional segmentation for guidance + analytics (same strategy either way)
-    return InlineKeyboardMarkup(
-        [
-            [InlineKeyboardButton("Under $500", callback_data="size_under_500")],
-            [InlineKeyboardButton("Over $500", callback_data="size_over_500")],
-            [InlineKeyboardButton("Skip", callback_data="back")],
-        ]
-    )
-
-
 def action_buttons_for_strategy(strategy_key: str) -> InlineKeyboardMarkup:
     # strategy_key may be st50 / st500 (segmentation) or master
     return InlineKeyboardMarkup(
@@ -296,7 +285,7 @@ def build_welcome(first_name: str, preselected: Optional[str] = None) -> str:
         f"Welcome to {BRAND_NAME}.\n\n"
         "We run a structured Gold (XAUUSD) copy trading strategy.\n"
         "Our focus: protect capital first, grow second — no hype.\n\n"
-        "If you want, you can tell us your account size so we can guide you better (optional).\n\n"
+        "Start by tapping ✅ Start Copying (step-by-step).\n\n"
         + DISCLAIMER
     )
 
@@ -382,33 +371,35 @@ def followup_72h(context: CallbackContext):
 # HANDLERS
 # =========================
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def start(update: Update, context: CallbackContext):
+    db_init()
 
-    source = "unknown"
+    user = update.effective_user
+    chat_id = update.effective_chat.id
 
-    if context.args:
-        source = context.args[0]
+    start_arg = ""
+    if getattr(context, "args", None) and len(context.args) > 0:
+        start_arg = (context.args[0] or "").strip()
 
-    print(f"User came from: {source}")
+    parsed = parse_start_arg(start_arg)
+    source = parsed.get("source") or "organic"
 
-    text = f"""
-Welcome to *{BRAND_NAME}*
+    # Keep st50 / st500 only as segmentation for analytics
+    seg = parsed.get("strategy")
+    if seg not in ("st50", "st500"):
+        seg = None
 
-Source: {source}
-
-Start copying our gold strategy below.
-"""
-
-    await update.message.reply_text(
-        text,
-        reply_markup=main_menu(),
-        parse_mode="Markdown"
+    upsert_lead(
+        chat_id,
+        stage="start",
+        source=source,
+        name=getattr(user, "first_name", None),
+        strategy=seg,
     )
 
     welcome = build_welcome(getattr(user, "first_name", ""), preselected=seg)
     update.message.reply_text(welcome, disable_web_page_preview=True)
 
-    update.message.reply_text("Optional: select your account size (for guidance):", reply_markup=account_size_prompt())
     update.message.reply_text("Main menu:", reply_markup=main_menu())
 
     remove_followups(context.job_queue, chat_id)
@@ -423,28 +414,6 @@ def on_button(update: Update, context: CallbackContext):
     q.answer()
     d = q.data
     chat_id = q.message.chat.id
-
-    # account size -> strategy
-    if d == "size_under_500":
-        upsert_lead(chat_id, stage="strategy_selected", strategy="st50")
-        edit_or_send(q, strategy_text("st50"), reply_markup=action_buttons_for_strategy("st50"))
-        return
-
-    if d == "size_over_500":
-        upsert_lead(chat_id, stage="strategy_selected", strategy="st500")
-        edit_or_send(q, strategy_text("st500"), reply_markup=action_buttons_for_strategy("st500"))
-        return
-
-    # manual strategy selection
-    if d == "strat_st50":
-        upsert_lead(chat_id, stage="strategy_selected", strategy="st50")
-        edit_or_send(q, strategy_text("st50"), reply_markup=action_buttons_for_strategy("st50"))
-        return
-
-    if d == "strat_st500":
-        upsert_lead(chat_id, stage="strategy_selected", strategy="st500")
-        edit_or_send(q, strategy_text("st500"), reply_markup=action_buttons_for_strategy("st500"))
-        return
 
     # onboarding
     if d == "onb1":
@@ -498,13 +467,9 @@ def on_button(update: Update, context: CallbackContext):
             "• Risk control first\n"
             "• Consistency over hype\n"
             "• Transparent updates\n\n"
-            "Optional guidance by account size:\n"
-            "• Under $500: start small and avoid over-leverage\n"
-            "• Over $500: keep risk controlled and copy proportionally\n\n"
             + DISCLAIMER,
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Back", callback_data="back")]]),
         )
-        return
         return
 
     if d == "faq":
@@ -562,7 +527,6 @@ def on_text(update: Update, context: CallbackContext):
         update.message.reply_text(
             "✅ Step 3 — Add Funds\n\n"
             "Fund your account with an amount you are comfortable with.\n\n"
-            "Optional: if you want, select your account size in the menu (for guidance only).\n\n"
             'When complete, type: "Funded".\n\n'
             + DISCLAIMER,
             reply_markup=main_menu(),
@@ -576,11 +540,8 @@ def on_text(update: Update, context: CallbackContext):
 
         # keep segmentation (st50/st500) if available, otherwise store nothing
         upsert_lead(chat_id, stage="funded", strategy=strategy_key if strategy_key in ("st50", "st500") else None)
-        seg = "Under $500" if strategy_key == "st50" else ("Over $500" if strategy_key == "st500" else "Not specified")
-
         update.message.reply_text(
             "✅ Step 4 — Activate Copy Trading\n\n"
-            f"Account size (optional): {seg}\n"
             f"Strategy: {STRATEGY_MASTER['name']}\n\n"
             "Tap Open Copy Trading, enable copying, then press ✅ I enabled copying.\n\n"
             + DISCLAIMER,
@@ -620,7 +581,7 @@ def stats(update: Update, context: CallbackContext):
     if strategies:
         msg.append("")
         msg.append("Strategies:")
-        label_map = {"st50": STRATEGY_50["name"], "st500": STRATEGY_500["name"]}
+        label_map = {"st50": "st50 (tracking)", "st500": "st500 (tracking)"}
         for k in sorted(strategies.keys()):
             msg.append(f"- {label_map.get(k, k)}: {strategies[k]}")
 
