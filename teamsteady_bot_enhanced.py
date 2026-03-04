@@ -123,9 +123,9 @@ def start(update: Update, context: CallbackContext):
 
     msg = (
         f"👋 Welcome to *{BRAND_NAME}*\n\n"
-        "Market: Gold (XAUUSD)
-        Strategy: Automated copy trading
-        Setup time: 3 minutes"
+        "Market: Gold (XAUUSD).\n\n"
+        "Strategy: Automated copy trading.\n\n"
+        "Setup time: 3 minutes.\n\n"
         "Use the buttons below to onboard.\n\n"
         "*Important:* Trading involves risk. You can lose money."
     )
