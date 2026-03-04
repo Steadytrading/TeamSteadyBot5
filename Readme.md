@@ -1,6 +1,11 @@
 
-FROM python:3.10-slim
-WORKDIR /app
-COPY . /app
-RUN pip install -r requirements.txt
-CMD ["python", "teamsteady_bot_enhanced.py"]
+# TeamSteadyBot – Repo v3 (Forced Docker Deploy)
+
+Environment variables:
+```
+TELEGRAM_BOT_TOKEN=your_token_here
+BOT_OWNER_ID=7883329967
+```
+
+Railway will auto-detect Dockerfile because `.dockeronly` is present.
+Just deploy from GitHub.
