@@ -382,30 +382,27 @@ def followup_72h(context: CallbackContext):
 # HANDLERS
 # =========================
 
-def start(update: Update, context: CallbackContext):
-    db_init()
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    user = update.effective_user
-    chat_id = update.effective_chat.id
+    source = "unknown"
 
-    start_arg = ""
-    if getattr(context, "args", None) and len(context.args) > 0:
-        start_arg = (context.args[0] or "").strip()
+    if context.args:
+        source = context.args[0]
 
-    parsed = parse_start_arg(start_arg)
-    source = parsed.get("source") or "organic"
+    print(f"User came from: {source}")
 
-    # Keep st50 / st500 only as segmentation for analytics
-    seg = parsed.get("strategy")
-    if seg not in ("st50", "st500"):
-        seg = None
+    text = f"""
+Welcome to *{BRAND_NAME}*
 
-    upsert_lead(
-        chat_id,
-        stage="start",
-        source=source,
-        name=getattr(user, "first_name", None),
-        strategy=seg,
+Source: {source}
+
+Start copying our gold strategy below.
+"""
+
+    await update.message.reply_text(
+        text,
+        reply_markup=main_menu(),
+        parse_mode="Markdown"
     )
 
     welcome = build_welcome(getattr(user, "first_name", ""), preselected=seg)
